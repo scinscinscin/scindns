@@ -30,8 +30,14 @@ public class Main {
                 serverSocket.receive(receivePacket);
 
                 Connection conn = new Connection(receivePacket, serverSocket);
-                new Thread(conn).start();
+                try{
+                    new Thread(conn).start();
+                } catch (OutOfMemoryError oom){
+                    System.out.println("Ran out of memory / allocatable threads. Continuing anyways to make adderssing work.");
+                    continue;
+                }
             }
+
         } catch (Exception e) {
             System.err.println("Error creating socket: " + e.getMessage());
         }
@@ -63,6 +69,8 @@ class Connection implements Runnable {
                 handoffToUpstream(bytes, serverSocket, receivePacket.getAddress(), receivePacket.getPort());
             }catch(IOException io){}
         }
+
+        System.out.println("Finished running run()");
     }
 
     public static void sendResponse(byte[] initialBytes, String response, DatagramSocket serverSocket, InetAddress address, int port) throws Exception {
@@ -146,11 +154,13 @@ class Connection implements Runnable {
 
             byte[] receiveData = new byte[1024];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            upstreamServerSocket.setSoTimeout(1000);
             upstreamServerSocket.receive(receivePacket);
 
             // forward response from upstream to client which asked for query
             serverSocket.send(new DatagramPacket(receivePacket.getData(), receivePacket.getLength(), address, port));
         }catch(IOException ioException){
+            System.out.println("IO exception while trying to connect upstream: " + ioException.getMessage());
             throw ioException;
         }
     }
