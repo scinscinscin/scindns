@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.*;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class Main {
     static Config config = null;
@@ -109,6 +110,19 @@ class Connection implements Runnable {
         }
     }
 
+    public static boolean checkMatch(String config, String query){
+        String[] configParts = config.split(Pattern.quote(".")), queryParts = query.split(Pattern.quote("."));
+        if(configParts.length != queryParts.length) return false;
+
+        for(int i = configParts.length - 1; i >= 0; i--){
+            if(i == 0 && configParts[i].equals("*")) return true;
+            else if(configParts[i].equals(queryParts[i]) == false) return false;
+            continue;
+        }
+
+        return true;
+    }
+
     public static String determineIfRoutable(byte[] bytes, String remoteAddress){
         int currentByteIndex = 12;
         String hostname = "";
@@ -125,7 +139,7 @@ class Connection implements Runnable {
 
         String finalHostname = hostname;
         Optional<DnsRecord> record = Main.config.getRecords().stream().filter(r -> {
-            if(!r.getName().equals(finalHostname)) return false;
+            if(!checkMatch(r.getName(), finalHostname)) return false;
             if(type == 1 && r.getType().equals("A") == false) return false;
             return true;
         }).findFirst();
